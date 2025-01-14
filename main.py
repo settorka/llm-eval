@@ -1,8 +1,13 @@
-# main.py (Example Usage)
-
-from datasets import Dataset
-import pandas as pd
+from dotenv import load_dotenv
+import os
 from model_eval import LLMEvaluatorBuilder, RagasLLMEvaluator, BleuScoreEvaluator, RougeScoreEvaluator
+from datasets import Dataset
+
+# Load environment variables
+load_dotenv(dotenv_path=os.path.join(os.getcwd(), 'env', '.env'))
+endpoint = os.getenv('ENDPOINT')
+api_key = os.getenv('API_KEY')
+model_name = os.getenv('MODEL_NAME')
 
 # Sample data for evaluation
 data_samples = {
@@ -18,13 +23,17 @@ data_samples = {
 dataset = Dataset.from_dict(data_samples)
 df = dataset.to_pandas()
 
-# Use the builder pattern to construct a chain of evaluators
+# Build the evaluation pipeline
 builder = LLMEvaluatorBuilder()
 chained_evaluator = (builder
-                     .add_evaluator(RagasLLMEvaluator())  # Add RAGAS evaluator
+                     .add_evaluator(RagasLLMEvaluator(
+                         azure_endpoint=endpoint,
+                         azure_api_key=api_key,
+                         azure_model_name=model_name
+                     ))  # Add RAGAS evaluator
                      .add_evaluator(BleuScoreEvaluator())  # Add BLEU score evaluator
                      .add_evaluator(RougeScoreEvaluator())  # Add ROUGE score evaluator
-                     .build())  # Build the final chained evaluator
+                     .build())
 
 # Evaluate the dataset
 result = chained_evaluator.evaluate(df)
