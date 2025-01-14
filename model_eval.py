@@ -4,7 +4,7 @@ from typing import List
 from ragas import evaluate
 from ragas.metrics import faithfulness, answer_correctness, context_precision, context_recall, BleuScore, RougeScore
 from ragas.dataset_schema import SingleTurnSample
-from datasets import Dataset
+from langchain.chat_models import AzureChatOpenAI
 
 
 # Abstract Base Class for Evaluators
@@ -64,19 +64,32 @@ class LLMEvaluatorBuilder:
 
 # Concrete Evaluator using RAGAS
 class RagasLLMEvaluator(LLMEvaluator):
-    def __init__(self, metrics: List = None):
+    def __init__(self, metrics: List = None, azure_endpoint=None, azure_api_key=None, azure_model_name=None):
         """
-        Initializes RAGAS evaluator with specific metrics (all metrics by default).
+        Initializes RAGAS evaluator with specific metrics and AzureOpenAI client.
         """
         if metrics is None:
             metrics = [faithfulness, answer_correctness, context_precision, context_recall]
         self.metrics = metrics
 
+        if azure_endpoint and azure_api_key and azure_model_name:
+            # Initialize AzureOpenAI client
+            self.llm = AzureChatOpenAI(
+                azure_openai_api_key=azure_api_key,
+                azure_openai_api_base=azure_endpoint,
+                azure_openai_api_version="2024-02-01",
+                deployment_name=azure_model_name,
+                temperature=0
+            )
+        else:
+            raise ValueError("Azure endpoint, API key, and model name must be provided.")
+
     def evaluate(self, dataset: pd.DataFrame) -> pd.DataFrame:
         """
-        Evaluates the LLM based on the specified metrics (all metrics by default).
+        Evaluates the LLM based on the specified metrics using AzureOpenAI.
         """
-        score = evaluate(dataset, metrics=self.metrics)
+        # Pass the AzureOpenAI client to RAGAS
+        score = evaluate(dataset, metrics=self.metrics, llm=self.llm)
         return score.to_pandas()
 
 
